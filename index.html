@@ -29,308 +29,39 @@
             color: white;
         }
 
-        /* ... */
+        .btn-edit-card {
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+            /* Hidden by default, toggled by JS */
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background: #3b82f6;
+            color: white;
+            border: none;
+        }
+
+        .btn-edit-card:hover {
+            background: #2563eb;
+        }
+
+        .admin-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: none;
+            /* Hidden by default */
+            gap: 5px;
+            z-index: 20;
+        }
     </style>
 
     <!-- ... (In JS) ... -->
-    <script>
-        // ... (Data & Init preserved) ...
 
-        function showDeleteButtons(show) {
-            document.querySelectorAll('.btn-delete-card').forEach(btn => {
-                btn.style.display = show ? 'flex' : 'none';
-            });
-        }
-
-        function attemptLogin() {
-            const user = document.getElementById('loginUser');
-            const pass = document.getElementById('loginPass');
-
-            if (user.value === "admin" && pass.value === "admin123") {
-                // CLEAR CREDENTIALS
-                user.value = "";
-                pass.value = "";
-
-                closeLogin();
-                // Switch View
-                document.getElementById('customerView').style.display = 'none';
-                document.getElementById('adminView').style.display = 'block';
-
-                // FORCE POPULATE ON LOGIN
-                initAdminForm();
-
-                // Show Delete Buttons for existing cards (if any have the class)
-                showDeleteButtons(true);
-
-            } else {
-                alert("Incorrect username or password");
-            }
-        }
-
-        function logoutAdmin() {
-            document.getElementById('adminView').style.display = 'none';
-            document.getElementById('customerView').style.display = 'block';
-
-            // Hide Delete Buttons
-            showDeleteButtons(false);
-
-            // Clear Status
-            const stat = document.getElementById('statusMsg');
-            stat.style.display = 'none';
-            stat.innerText = '';
-        }
-
-        // --- FORM RESETTER ---
-        function resetForm() {
-            // Text/Values
-            document.getElementById('newPrice').value = "";
-            document.getElementById('dateStart').value = "";
-            document.getElementById('dateEnd').value = "";
-            document.getElementById('isPiso').checked = false;
-
-            // Dropdowns (Set to first option or specific defaults)
-            const origin = document.getElementById('newOrigin');
-            if (origin.options.length > 0) origin.selectedIndex = 0; // Default MNL usually
-
-            const dest = document.getElementById('newDest');
-            if (dest.options.length > 1) dest.selectedIndex = 1; // Default NRT usually
-
-            document.getElementById('newAirline').selectedIndex = 0;
-            document.getElementById('newCabin').selectedIndex = 0;
-
-            // Radios
-            document.querySelector('input[name="tripType"][value="roundtrip"]').checked = true;
-            document.querySelector('input[name="baseCat"][value="international"]').checked = true;
-
-            // Trigger UI Updates
-            toggleTripType();
-        }
-
-
-        // --- DELETE PROMO LOGIC ---
-        async function deletePromo(id, btnElement) {
-            const confirmDelete = confirm("Are you sure you want to DELETE this promo forever?");
-            if (!confirmDelete) return;
-
-            const token = document.getElementById('githubToken').value;
-            const username = document.getElementById('ghUsername').value;
-            const repo = document.getElementById('ghRepo').value;
-
-            if (!token) {
-                alert("Please login as Admin to delete.");
-                return;
-            }
-
-            // feedback
-            const originalText = btnElement.innerText;
-            btnElement.innerText = "⏳";
-            btnElement.disabled = true;
-
-            try {
-                const REPO_FULL = `${username}/${repo}`;
-                const PATH = "index.html";
-                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
-
-                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
-                if (!getRes.ok) throw new Error("Fetch failed");
-
-                const data = await getRes.json();
-                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
-
-                // Regex to find the promo block by ID
-                // Pattern: Look for the article tag with the specific ID and remove it.
-                // Safe approach: <article[^>]*id="promo-123"[^>]*>[\s\S]*?<\/article>
-                const regex = new RegExp(`<article[^>]*id="${id}"[^>]*>[\\s\\S]*?<\\/article>`, 'g');
-
-                if (!regex.test(currentContent)) {
-                    throw new Error("Promo not found in file (might be an old promo without ID).");
-                }
-
-                const newContent = currentContent.replace(regex, ''); // Remove it
-
-                // Push Update
-                const putRes = await fetch(API_URL, {
-                    method: "PUT",
-                    headers: { 'Authorization': `token ${token}` },
-                    body: JSON.stringify({
-                        message: `Delete Promo ID: ${id}`,
-                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
-                        sha: data.sha
-                    })
-                });
-
-                if (!putRes.ok) throw new Error("Failed to delete on GitHub.");
-
-                // Success: Remove from DOM
-                const card = document.getElementById(id);
-                if (card) card.remove();
-
-                alert("Promo Deleted Successfully!");
-
-            } catch (err) {
-                console.error(err);
-                alert("Delete Failed: " + err.message);
-                btnElement.innerText = "🗑️";
-                btnElement.disabled = false;
-            }
-        }
-
-
-        async function addNewPromo() {
-            // ... (Token checks same) ...
-            const token = document.getElementById('githubToken').value;
-            const username = document.getElementById('ghUsername').value;
-            const repo = document.getElementById('ghRepo').value;
-            const statusBox = document.getElementById('statusMsg');
-
-            if (!token || !username || !repo) { alert("⚠️ Missing Settings!"); return; }
-
-            // Save Settings
-            if (document.getElementById('saveToken').checked) {
-                localStorage.setItem('gh_token', token);
-                localStorage.setItem('gh_username', username);
-                localStorage.setItem('gh_repo', repo);
-            }
-
-            // Get Values
-            const originVal = document.getElementById('newOrigin').value.split('|');
-            const destVal = document.getElementById('newDest').value.split('|');
-            const airline = document.getElementById('newAirline').value;
-            let price = document.getElementById('newPrice').value.trim();
-            const cabin = document.getElementById('newCabin').value;
-
-            // Auto-Peso & Format
-            // Remove existing non-numeric chars except comma/dot? No, simpler.
-            // If it looks like a number "5000", make it "₱5,000"
-            const rawNum = price.replace(/[^0-9.]/g, '');
-            if (rawNum && !price.includes('₱')) {
-                const num = parseFloat(rawNum);
-                price = "₱" + num.toLocaleString('en-US');
-            } else if (!price.includes('₱') && hasNumber(price)) {
-                price = "₱" + price;
-            }
-
-            function hasNumber(myString) { return /\d/.test(myString); }
-
-
-            // Categories
-            const baseCat = document.querySelector('input[name="baseCat"]:checked').value;
-            const isPiso = document.getElementById('isPiso').checked;
-            let finalCat = baseCat;
-            if (isPiso) finalCat += " piso";
-
-            // Date
-            const dStart = document.getElementById('dateStart').value;
-            const dEnd = document.getElementById('dateEnd').value;
-            const tripType = document.querySelector('input[name="tripType"]:checked').value;
-            const isOneWay = tripType === 'oneway';
-
-            if (!dStart) { alert("Please select a travel date."); return; }
-            if (tripType === 'roundtrip' && !dEnd) { alert("Please select a return date."); return; }
-
-            const dateStr = formatDateRange(dStart, dEnd, isOneWay);
-
-            // ID Generation
-            const promoID = "promo-" + Date.now();
-
-            // Construct HTML
-            const pisoTag = isPiso ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
-            const tripLabel = tripType === 'multicity' ? '<span style="font-size:0.7em; background:#333; padding:2px 4px; border-radius:3px;">Multi-city</span>' : '';
-
-            // Added styling: display:flex or block for admin button. defaults to hidden via CSS class but we add inline style if currently admin?
-            // Actually, since we are adding it FROM admin view, we can just make it visible initially? 
-            // No, because this HTML goes to the public site. It MUST be display:none default (via css class) and shown only by JS on load if admin.
-
-            const newCardHTML = `
-            <!-- ADDDED PROMO: ${originVal[1]} to ${destVal[1]} -->
-            <article class="ticket-card" id="${promoID}" data-category="${finalCat}">
-                <button class="btn-delete-card" onclick="deletePromo('${promoID}', this)" title="Delete Promo">🗑️</button>
-                <div class="flight-route">
-                    <div class="location"><span class="code">${originVal[0]}</span><span class="city">${originVal[1]}</span></div>
-                    <div class="plane-icon">✈️ ${tripLabel}</div>
-                    <div class="location"><span class="code">${destVal[0]}</span><span class="city">${destVal[1]}</span></div>
-                </div>
-                <div class="flight-details">
-                    ${pisoTag}
-                    <p class="travel-date">📅 ${dateStr}</p>
-                    <p class="airline">Airline: ${airline} (${cabin})</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">${price}</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('${originVal[1]} to ${destVal[1]}', '${price}')" class="btn-claim">Book This Flight</button>
-            </article>`;
-
-            // UI Feedback
-            const btn = document.querySelector('.admin-form .btn-claim');
-            const originalText = btn.innerText;
-            btn.innerText = "⏳ Saving...";
-            btn.disabled = true;
-            statusBox.style.display = 'block';
-            statusBox.style.background = '#e0f2fe';
-            statusBox.style.color = '#0284c7';
-            statusBox.innerText = "Syncing with GitHub...";
-
-            try {
-                // ... (Fetch logic preserved) ...
-                const REPO_FULL = `${username}/${repo}`;
-                const PATH = "index.html";
-                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
-
-                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
-                if (!getRes.ok) throw new Error("GitHub Error: " + getRes.status);
-
-                const data = await getRes.json();
-                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
-                const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
-
-                const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
-
-                const putRes = await fetch(API_URL, {
-                    method: "PUT",
-                    headers: { 'Authorization': `token ${token}` },
-                    body: JSON.stringify({
-                        message: `Add Promo: ${originVal[1]} to ${destVal[1]}`,
-                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
-                        sha: data.sha
-                    })
-                });
-
-                if (!putRes.ok) throw new Error("Failed to commit.");
-
-                // Success
-                btn.innerText = originalText;
-                btn.disabled = false;
-                statusBox.style.background = '#dcfce7';
-                statusBox.style.color = '#166534';
-                statusBox.innerHTML = `✅ <b>Promo Added!</b><br>${originVal[1]} ➝ ${destVal[1]}`;
-
-                // Add to grid
-                const grid = document.getElementById('mainPromoGrid');
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = newCardHTML;
-                const newNode = tempDiv.firstElementChild;
-                grid.insertBefore(newNode, grid.firstChild);
-
-                // Show delete button immediately since we are admin
-                newNode.querySelector('.btn-delete-card').style.display = 'flex';
-
-                // RESET FORM
-                resetForm();
-
-                // Fade Msg
-                setTimeout(() => { statusBox.style.display = 'none'; }, 5000);
-
-            } catch (err) {
-                console.error(err);
-                btn.innerText = originalText;
-                btn.disabled = false;
-                statusBox.style.background = '#fee2e2';
-                statusBox.innerText = "Error: " + err.message;
-            }
-        }
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -369,7 +100,7 @@
             <nav>
                 <a href="#" class="active">Flight Promos</a>
                 <a href="#">About Us</a>
-                <a href="#" onclick="showLogin()">Log In</a>
+                <a href="#" id="navLoginBtn" onclick="showLogin()">Log In</a>
             </nav>
         </div>
     </header>
@@ -529,6 +260,24 @@
                     </div>
                 </div>
 
+                <!-- Email Config Section -->
+                <div
+                    style="background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed #3b82f6;">
+                    <label style="color: #60a5fa; font-size: 0.9rem; font-weight: bold;">📩 INQUIRY EMAIL
+                        SETTINGS</label>
+                    <p style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 8px;">Where should customer inquiries be
+                        sent?</p>
+
+                    <div style="display: flex; gap: 10px;">
+                        <input type="email" id="adminEmailInput" placeholder="Enter your email..."
+                            style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #1e293b; color: white;">
+                        <button onclick="saveAdminEmail()" class="btn-claim"
+                            style="width: auto; padding: 0 15px; font-size: 0.8rem; background: #3b82f6;">
+                            Save Email
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Status Message Area -->
                 <div id="statusMsg"
                     style="display: none; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: center; font-size: 0.9rem;">
@@ -568,8 +317,12 @@
 
                 <!-- Flight Card: Example 1 -->
                 <article class="ticket-card" id="demo-1" data-category="international">
-                    <button class="btn-delete-card" onclick="deletePromo('demo-1', this)"
-                        title="Delete Promo">🗑️</button>
+                    <div class="admin-controls">
+                        <button class="btn-delete-card" onclick="deletePromo('demo-1', this)" title="Delete"
+                            style="display:flex;">🗑️</button>
+                        <button class="btn-edit-card" onclick="editPromo('demo-1')" title="Edit"
+                            style="display:flex;">✏️</button>
+                    </div>
                     <div class="flight-route">
                         <div class="location">
                             <span class="code">MNL</span>
@@ -596,8 +349,12 @@
 
                 <!-- Flight Card: Example 2 -->
                 <article class="ticket-card" id="demo-2" data-category="piso international">
-                    <button class="btn-delete-card" onclick="deletePromo('demo-2', this)"
-                        title="Delete Promo">🗑️</button>
+                    <div class="admin-controls">
+                        <button class="btn-delete-card" onclick="deletePromo('demo-2', this)" title="Delete"
+                            style="display:flex;">🗑️</button>
+                        <button class="btn-edit-card" onclick="editPromo('demo-2')" title="Edit"
+                            style="display:flex;">✏️</button>
+                    </div>
                     <div class="flight-route">
                         <div class="location">
                             <span class="code">MNL</span>
@@ -822,11 +579,12 @@
             </div>
 
             <!-- Booking Form -->
-            <form id="inquiryForm" action="https://formsubmit.co/aldreamjamion@gmail.com" method="POST"
+            <form id="inquiryForm" action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST"
                 class="booking-form compact-form">
                 <!-- Hidden fields -->
                 <input type="hidden" name="_subject" value="New Flight Promo Inquiry!">
                 <input type="hidden" name="_captcha" value="false">
+                <input type="hidden" name="_next" id="nextRedirect" value="">
                 <input type="hidden" id="inputRoute" name="Flight Route">
                 <input type="hidden" id="inputPrice" name="Price">
 
@@ -918,11 +676,20 @@
             populateAirports();
 
             // Populate Current Email Setting
-            // Extract from action="https://formsubmit.co/email@addr.com"
-            const currentAction = document.getElementById('inquiryForm').getAttribute("action");
-            if (currentAction && currentAction.includes("formsubmit.co/")) {
-                const currentEmail = currentAction.split("formsubmit.co/")[1];
-                document.getElementById('adminEmailInput').value = currentEmail;
+            // 1. Try Local Storage first (Persistence)
+            const localEmail = localStorage.getItem('admin_email_pref');
+            if (localEmail) {
+                document.getElementById('adminEmailInput').value = localEmail;
+                document.getElementById('inquiryForm').action = `https://formsubmit.co/${localEmail}`;
+            } else {
+                // 2. Try extraction
+                const currentAction = document.getElementById('inquiryForm').getAttribute("action");
+                if (currentAction && currentAction.includes("formsubmit.co/")) {
+                    const currentEmail = currentAction.split("formsubmit.co/")[1];
+                    if (!currentEmail.includes("YOUR_EMAIL")) {
+                        document.getElementById('adminEmailInput').value = currentEmail;
+                    }
+                }
             }
         }
 
@@ -939,6 +706,9 @@
                 return;
             }
             if (!token) { alert("Please login/provide GitHub token first."); return; }
+
+            // Save to LocalStorage immediately
+            localStorage.setItem('admin_email_pref', newEmail);
 
             // UI Feedback
             const btn = document.querySelector('button[onclick="saveAdminEmail()"]');
@@ -1056,9 +826,22 @@
             document.getElementById('loginModal').classList.remove('show');
         }
 
-        function showDeleteButtons(show) {
-            document.querySelectorAll('.btn-delete-card').forEach(btn => {
-                btn.style.display = show ? 'flex' : 'none';
+        function toggleAdminUI(isAdmin) {
+            // Footer Login Button (Hide if Admin)
+            const footerBtn = document.getElementById('adminBtn');
+            if (footerBtn) footerBtn.style.display = isAdmin ? 'none' : 'block';
+
+            // Header Login Button (Hide if Admin)
+            const navBtn = document.getElementById('navLoginBtn');
+            if (navBtn) navBtn.style.display = isAdmin ? 'none' : 'inline-block';
+
+            // Card Buttons
+            document.querySelectorAll('.admin-controls').forEach(el => el.style.display = isAdmin ? 'flex' : 'none');
+            document.querySelectorAll('.btn-claim').forEach(el => {
+                // Don't hide the form submit button! Only card buttons.
+                if (!el.closest('.admin-form') && !el.closest('.booking-form')) {
+                    el.style.display = isAdmin ? 'none' : 'block';
+                }
             });
         }
 
@@ -1067,22 +850,17 @@
             const pass = document.getElementById('loginPass');
 
             if (user.value === "admin" && pass.value === "admin123") {
-                // CLEAR CREDENTIALS
                 user.value = "";
                 pass.value = "";
-
                 closeLogin();
 
-                // VIEW LOGIC: Show Admin Top, Hide Hero, Keep Board
+                // View Logic
                 document.getElementById('adminView').style.display = 'block';
                 document.getElementById('heroSection').style.display = 'none';
-                document.getElementById('customerView').style.display = 'block'; // Ensure grid is seen
+                document.getElementById('customerView').style.display = 'block';
 
-                // FORCE POPULATE ON LOGIN
                 initAdminForm();
-
-                // Show Delete Buttons for existing cards
-                showDeleteButtons(true);
+                toggleAdminUI(true);
 
             } else {
                 alert("Incorrect username or password");
@@ -1090,15 +868,12 @@
         }
 
         function logoutAdmin() {
-            // Revert View
             document.getElementById('adminView').style.display = 'none';
             document.getElementById('heroSection').style.display = 'block';
             document.getElementById('customerView').style.display = 'block';
 
-            // Hide Delete Buttons
-            showDeleteButtons(false);
+            toggleAdminUI(false);
 
-            // Clear Status
             const stat = document.getElementById('statusMsg');
             stat.style.display = 'none';
             stat.innerText = '';
@@ -1106,28 +881,58 @@
 
         // --- FORM RESETTER ---
         function resetForm() {
-            // Text/Values
             document.getElementById('newPrice').value = "";
             document.getElementById('dateStart').value = "";
             document.getElementById('dateEnd').value = "";
             document.getElementById('isPiso').checked = false;
 
-            // Dropdowns (Set to first option or specific defaults)
             const origin = document.getElementById('newOrigin');
             if (origin.options.length > 0) origin.selectedIndex = 0;
-
             const dest = document.getElementById('newDest');
             if (dest.options.length > 1) dest.selectedIndex = 1;
 
             document.getElementById('newAirline').selectedIndex = 0;
             document.getElementById('newCabin').selectedIndex = 0;
-
-            // Radios
             document.querySelector('input[name="tripType"][value="roundtrip"]').checked = true;
             document.querySelector('input[name="baseCat"][value="international"]').checked = true;
-
-            // Trigger UI Updates
             toggleTripType();
+        }
+
+        // --- EDIT PROMO (Load to Form) ---
+        function editPromo(id) {
+            const card = document.getElementById(id);
+            if (!card) return;
+
+            // Extract Data from DOM
+            const originCode = card.querySelector('.flight-route .location:nth-child(1) .code').innerText;
+            const destCode = card.querySelector('.flight-route .location:nth-child(3) .code').innerText;
+            const airlineText = card.querySelector('.airline').innerText.replace('Airline: ', '');
+            const airline = airlineText.split(' (')[0];
+            const cabin = airlineText.includes('(') ? airlineText.split('(')[1].replace(')', '') : 'Economy';
+            const price = card.querySelector('.price-val').innerText;
+            const dateStr = card.querySelector('.travel-date').innerText.replace('📅 ', '');
+
+            // Populate Form
+            // Note: Simplistic matching. Origin/Dest might need partial matching if names differ.
+            // Loop selects to find matching code.
+            const originSel = document.getElementById('newOrigin');
+            for (let i = 0; i < originSel.options.length; i++) {
+                if (originSel.options[i].value.includes(originCode)) { originSel.selectedIndex = i; break; }
+            }
+            const destSel = document.getElementById('newDest');
+            for (let i = 0; i < destSel.options.length; i++) {
+                if (destSel.options[i].value.includes(destCode)) { destSel.selectedIndex = i; break; }
+            }
+
+            document.getElementById('newAirline').value = airline;
+            document.getElementById('newCabin').value = cabin;
+            document.getElementById('newPrice').value = price;
+
+            // Alert user
+            alert(`📝 EDIT MODE: details for ${originCode}->${destCode} loaded into the Admin Form above.\n\nMake your changes and click 'Add Promo' to create the updated version.\n\nDon't forget to DELETE the old one after adding the new one!`);
+
+            // Scroll to form
+            document.getElementById('adminView').scrollIntoView({ behavior: 'smooth' });
         }
 
         // --- DELETE PROMO LOGIC ---
@@ -1259,11 +1064,14 @@
             const pisoTag = isPiso ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
             const tripLabel = tripType === 'multicity' ? '<span style="font-size:0.7em; background:#333; padding:2px 4px; border-radius:3px;">Multi-city</span>' : '';
 
-            // Note: btn-delete-card defaults to hidden via CSS class, but we make it visible below since we are Admin
+            // NEW CARD HTML with Admin Controls Container
             const newCardHTML = `
             <!-- ADDDED PROMO: ${originVal[1]} to ${destVal[1]} -->
             <article class="ticket-card" id="${promoID}" data-category="${finalCat}">
-                <button class="btn-delete-card" onclick="deletePromo('${promoID}', this)" title="Delete Promo">🗑️</button>
+                <div class="admin-controls" style="display:none; gap:5px; margin-bottom:10px;">
+                    <button class="btn-delete-card" onclick="deletePromo('${promoID}', this)" title="Delete" style="position:static; display:flex;">🗑️</button>
+                    <button class="btn-edit-card" onclick="editPromo('${promoID}')" title="Edit" style="background:#3b82f6; color:white; border:none; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer;">✏️</button>
+                </div>
                 <div class="flight-route">
                     <div class="location"><span class="code">${originVal[0]}</span><span class="city">${originVal[1]}</span></div>
                     <div class="plane-icon">✈️ ${tripLabel}</div>
@@ -1344,8 +1152,8 @@
                 const newCardNode = tempDiv.firstElementChild;
                 grid.insertBefore(newCardNode, grid.firstChild);
 
-                // Show delete button
-                newCardNode.querySelector('.btn-delete-card').style.display = 'flex';
+                // Refresh UI (Show new admin buttons)
+                toggleAdminUI(true);
 
                 // RESET FORM
                 resetForm();
@@ -1432,6 +1240,9 @@
             // Fill hidden inputs
             document.getElementById('inputRoute').value = route;
             document.getElementById('inputPrice').value = price;
+
+            // Set Redirect to current page (so they come back after email)
+            document.getElementById('nextRedirect').value = window.location.href;
         }
 
         function closeModal() {
