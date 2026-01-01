@@ -193,15 +193,25 @@
                 <!-- GitHub Token for Save -->
                 <div
                     style="background: rgba(255,100,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed orange;">
-                    <label style="color: orange; font-size: 0.9rem; font-weight: bold;">🔑 SECRET KEY (Required for
-                        Permanent Save)</label>
-                    <p style="font-size: 0.8rem; color: #ccc; margin-bottom: 8px;">Paste your GitHub Token below.
-                        Without this, your promo will disappear when you refresh.</p>
+                    <label style="color: orange; font-size: 0.9rem; font-weight: bold;">⚙️ GITHUB SETUP
+                        (Required)</label>
+                    <p style="font-size: 0.8rem; color: #ccc; margin-bottom: 8px;">Verify these settings to connect to
+                        YOUR repository.</p>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="ghUsername" value="atomakioaizen" placeholder="GitHub Username"
+                            style="font-size: 0.9rem; flex: 1;">
+                        <input type="text" id="ghRepo" value="cheapest-air-promo" placeholder="Repo Name"
+                            style="font-size: 0.9rem; flex: 1;">
+                    </div>
+
+                    <label style="color: orange; font-size: 0.8rem; font-weight: bold;">🔑 SECRET KEY</label>
                     <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx..."
                         style="font-size: 0.9rem; margin-bottom: 5px;">
+
                     <div style="margin-top: 5px;">
                         <label style="font-size: 0.8rem; color: #fff; cursor: pointer;">
-                            <input type="checkbox" id="saveToken"> Remember my key (Save in browser)
+                            <input type="checkbox" id="saveToken"> Remember my settings (Save in browser)
                         </label>
                     </div>
                 </div>
@@ -369,10 +379,16 @@
         // --- VIEW NAVIGATION ---
         function showLogin() {
             document.getElementById('loginModal').classList.add('show');
-            // Check for saved token
+            // Check for saved data
             const savedToken = localStorage.getItem('gh_token');
+            const savedUser = localStorage.getItem('gh_username');
+            const savedRepo = localStorage.getItem('gh_repo');
+
             if (savedToken) {
                 document.getElementById('githubToken').value = savedToken;
+                // Only override if no value present (though simple is better: just set it)
+                if (savedUser) document.getElementById('ghUsername').value = savedUser;
+                if (savedRepo) document.getElementById('ghRepo').value = savedRepo;
                 document.getElementById('saveToken').checked = true;
             }
         }
@@ -409,16 +425,23 @@
         // --- GITHUB API AUTO-SAVE LOGIC ---
         async function addNewPromo() {
             const token = document.getElementById('githubToken').value;
-            if (!token) {
-                alert("⚠️ Cannot Save Permanently!\n\nPlease enter the GitHub Secret Key. Otherwise this saves nowhere.");
+            const username = document.getElementById('ghUsername').value;
+            const repo = document.getElementById('ghRepo').value;
+
+            if (!token || !username || !repo) {
+                alert("⚠️ Missing Settings!\n\nPlease enter your GitHub Username, Repo Name, and Secret Key.");
                 return;
             }
 
-            // Save Token Preference
+            // Save Settings Preference
             if (document.getElementById('saveToken').checked) {
                 localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_username', username);
+                localStorage.setItem('gh_repo', repo);
             } else {
                 localStorage.removeItem('gh_token');
+                localStorage.removeItem('gh_username');
+                localStorage.removeItem('gh_repo');
             }
 
             // Get Form Values
@@ -460,10 +483,10 @@
             btn.disabled = true;
 
             try {
-                // 1. Config (Adjust this if your REPO name is different!)
-                const REPO = "ALDREAM/cheapest-air-promo";
+                // 1. Config Dynamic
+                const REPO_FULL = `${username}/${repo}`;
                 const PATH = "index.html";
-                const API_URL = `https://api.github.com/repos/${REPO}/contents/${PATH}`;
+                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
 
                 // 2. Fetch Current File
                 const getRes = await fetch(API_URL, {
@@ -471,8 +494,9 @@
                 });
 
                 if (!getRes.ok) {
-                    const err = await getRes.json();
-                    throw new Error(err.message || "Repo not found.");
+                    if (getRes.status === 404) throw new Error("Repo or File not found. Double check your Username and Repo Name.");
+                    if (getRes.status === 401) throw new Error("Invalid Secret Key (Token).");
+                    throw new Error("GitHub Error: " + getRes.statusText);
                 }
 
                 const data = await getRes.json();
@@ -483,7 +507,7 @@
 
                 // 3. Inject New Card
                 const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
-                if (!currentContent.includes(insertionPoint)) throw new Error("Critical: Could not find insertion point.");
+                if (!currentContent.includes(insertionPoint)) throw new Error("Critical: File structure unknown. Cannot inject promo.");
 
                 const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
 
@@ -505,55 +529,8 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Error: " + err.message + "\n\nCheck if your Repo Name is correct (ALDREAM/cheapest-air-promo) and Token is valid.");
+                alert("Error: " + err.message);
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
         }
-
-
-        // --- STANDARD SITE LOGIC ---
-
-        function filterDeals(category) {
-            const cards = document.querySelectorAll('.ticket-card');
-            const buttons = document.querySelectorAll('.filter-btn');
-
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-
-            cards.forEach(card => {
-                if (category === 'all' || card.dataset.category.includes(category)) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-
-        const modal = document.getElementById('bookingModal');
-        const modalRoute = document.getElementById('modalRoute');
-        const modalPrice = document.getElementById('modalPrice');
-        const inputRoute = document.getElementById('inputRoute');
-        const inputPrice = document.getElementById('inputPrice');
-
-        function openBooking(route, price) {
-            modalRoute.innerText = route;
-            modalPrice.innerText = price;
-            inputRoute.value = route;
-            inputPrice.value = price;
-            modal.classList.add('show');
-        }
-
-        function closeModal() {
-            modal.classList.remove('show');
-        }
-
-        window.onclick = function (event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
-    </script>
-</body>
-
-</html>
