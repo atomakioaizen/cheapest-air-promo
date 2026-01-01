@@ -283,47 +283,7 @@
 
                 const data = await getRes.json();
                 const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
-                const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">
-
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" id="promo-1767344045546" data-category="international piso">
-                <button class="btn-delete-card" onclick="deletePromo('promo-1767344045546', this)" title="Delete Promo">🗑️</button>
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️ </div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Jan 21 - Jan 14, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">₱1</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '₱1')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" id="promo-1767343812643" data-category="international piso">
-                <button class="btn-delete-card" onclick="deletePromo('promo-1767343812643', this)" title="Delete Promo">🗑️</button>
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️ </div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Dec 31 - Jan 2, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">₱1</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '₱1')" class="btn-claim">Book This Flight</button>
-            </article>';
+                const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
 
                 const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
 
@@ -414,10 +374,178 @@
         </div>
     </header>
 
+    <!-- ADMIN VIEW (Direct Promo Adder & Auto-Save) -->
+    <div id="adminView" class="container"
+        style="display: none; padding-top: 20px; padding-bottom: 20px; border-bottom: 5px solid #f1f5f9;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="font-size: 2rem;">👑 Admin Dashboard</h1>
+            <button onclick="logoutAdmin()" class="filter-btn" style="border-color: #ef4444; color: #ef4444;">Log
+                Out</button>
+        </div>
+
+        <div class="admin-panel">
+            <h3>Add New Promo</h3>
+            <div class="booking-form admin-form">
+
+                <!-- AIRPAZ-STYLE SEARCH WIDGET -->
+                <div style="margin-bottom: 20px;">
+
+                    <!-- Top Row: Trip Type -->
+                    <div style="display: flex; gap: 20px; margin-bottom: 15px; color: #cbd5e1; font-size: 0.9rem;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="roundtrip" checked onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            Round Trip
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="oneway" onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            One Way
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="multicity" onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            Multi-city
+                        </label>
+                    </div>
+
+                    <!-- Main Grid Inputs -->
+                    <div
+                        style="display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+
+                        <!-- Origin -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">From</label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">🛫</span>
+                                <select id="newOrigin" class="admin-select"
+                                    style="padding-left: 35px; font-weight: 600;">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Destination -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">To</label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">🛬</span>
+                                <select id="newDest" class="admin-select" style="padding-left: 35px; font-weight: 600;">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Departure -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Departure</label>
+                            <input type="date" id="dateStart" class="admin-input" style="font-size: 0.85rem;">
+                        </div>
+
+                        <!-- Return -->
+                        <div class="form-group tight">
+                            <label id="lblReturn"
+                                style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Return</label>
+                            <input type="date" id="dateEnd" class="admin-input" style="font-size: 0.85rem;">
+                            <!-- Hidden checkbox sync -->
+                            <input type="checkbox" id="isOneWay" style="display:none;">
+                        </div>
+                    </div>
+
+                    <!-- Secondary Row: Cabin, Airline, Price -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+                        <!-- Cabin Class -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Cabin Class</label>
+                            <select id="newCabin" class="admin-select" style="font-size: 0.9rem;">
+                                <option value="Economy" selected>Economy</option>
+                                <option value="Premium Economy">Premium Economy</option>
+                                <option value="Business">Business</option>
+                                <option value="First Class">First Class</option>
+                            </select>
+                        </div>
+
+                        <!-- Airline -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Airline</label>
+                            <select id="newAirline" class="admin-select" style="font-size: 0.9rem;">
+                                <!-- Populated JS -->
+                            </select>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Promo Price</label>
+                            <input type="text" id="newPrice" placeholder="₱..."
+                                style="font-weight: bold; color: var(--brand-orange);">
+                        </div>
+                    </div>
+
+                    <!-- Promo Category Tags -->
+                    <div
+                        style="margin-top: 15px; display: flex; align-items: center; gap: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">Route Type:</span>
+                        <label style="font-size: 0.85rem;"><input type="radio" name="baseCat" value="international"
+                                checked> 🌏 International</label>
+                        <label style="font-size: 0.85rem;"><input type="radio" name="baseCat" value="domestic"> 🇵🇭
+                            Domestic</label>
+
+                        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 10px;">
+                        </div>
+
+                        <label style="font-size: 0.85rem; font-weight: bold; color: #fbbf24;">
+                            <input type="checkbox" id="isPiso"> 🔥 Piso Fare
+                        </label>
+                    </div>
+
+                </div>
+
+                <!-- GitHub Token for Save -->
+                <div
+                    style="background: rgba(255,100,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed orange;">
+                    <label style="color: orange; font-size: 0.9rem; font-weight: bold;">⚙️ GITHUB SETUP
+                        (Required)</label>
+                    <p style="font-size: 0.8rem; color: #ccc; margin-bottom: 8px;">Verify these settings to connect to
+                        YOUR repository.</p>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="ghUsername" value="atomakioaizen" placeholder="GitHub Username"
+                            style="font-size: 0.9rem; flex: 1;">
+                        <input type="text" id="ghRepo" value="cheapest-air-promo" placeholder="Repo Name"
+                            style="font-size: 0.9rem; flex: 1;">
+                    </div>
+
+                    <label style="color: orange; font-size: 0.8rem; font-weight: bold;">🔑 SECRET KEY</label>
+                    <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx..."
+                        style="font-size: 0.9rem; margin-bottom: 5px;">
+
+                    <div style="margin-top: 5px;">
+                        <label style="font-size: 0.8rem; color: #fff; cursor: pointer;">
+                            <input type="checkbox" id="saveToken"> Remember my settings (Save in browser)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Status Message Area -->
+                <div id="statusMsg"
+                    style="display: none; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: center; font-size: 0.9rem;">
+                </div>
+
+                <button onclick="addNewPromo()" class="btn-claim"
+                    style="background: var(--brand-orange); width: 100%; font-size: 1.1rem;">
+                    + Search & Publish Promo
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOMER VIEW WRAPPER -->
     <div id="customerView">
         <!-- Hero Section -->
-        <section class="hero">
+        <section class="hero" id="heroSection">
             <div class="hero-content">
                 <h1>Fly For Less. Standard Class.</h1>
                 <p>Exclusive airline promo seats released daily.</p>
@@ -439,10 +567,61 @@
             <div class="promo-grid" id="mainPromoGrid">
 
                 <!-- Flight Card: Example 1 -->
-                
+                <article class="ticket-card" id="demo-1" data-category="international">
+                    <button class="btn-delete-card" onclick="deletePromo('demo-1', this)"
+                        title="Delete Promo">🗑️</button>
+                    <div class="flight-route">
+                        <div class="location">
+                            <span class="code">MNL</span>
+                            <span class="city">Manila</span>
+                        </div>
+                        <div class="plane-icon">✈️</div>
+                        <div class="location">
+                            <span class="code">NRT</span>
+                            <span class="city">Tokyo</span>
+                        </div>
+                    </div>
+                    <div class="flight-details">
+                        <p class="travel-date">📅 Travel Period: Oct - Dec 2026</p>
+                        <p class="airline">Airline: Cebu Pac / PAL</p>
+                        <div class="pricing">
+                            <div class="price-label">Roundtrip All-in</div>
+                            <div class="price-val">₱8,999</div>
+                        </div>
+                    </div>
+                    <button onclick="openBooking('Manila to Tokyo', '₱8,999')" class="btn-claim">
+                        Book This Flight
+                    </button>
+                </article>
 
                 <!-- Flight Card: Example 2 -->
-                
+                <article class="ticket-card" id="demo-2" data-category="piso international">
+                    <button class="btn-delete-card" onclick="deletePromo('demo-2', this)"
+                        title="Delete Promo">🗑️</button>
+                    <div class="flight-route">
+                        <div class="location">
+                            <span class="code">MNL</span>
+                            <span class="city">Manila</span>
+                        </div>
+                        <div class="plane-icon">✈️</div>
+                        <div class="location">
+                            <span class="code">KIX</span>
+                            <span class="city">Osaka</span>
+                        </div>
+                    </div>
+                    <div class="flight-details">
+                        <span class="tag-piso">🔥 PISO FARE WATCH</span>
+                        <p class="travel-date">📅 Travel Period: Sep 2026</p>
+                        <p class="airline">Airline: Jetstar</p>
+                        <div class="pricing">
+                            <div class="price-label">One-way Base Fare</div>
+                            <div class="price-val">₱2,500</div>
+                        </div>
+                    </div>
+                    <button onclick="openBooking('Manila to Osaka', '₱2,500/base')" class="btn-claim">
+                        Book This Flight
+                    </button>
+                </article>
 
             </div>
         </main>
@@ -643,7 +822,8 @@
             </div>
 
             <!-- Booking Form -->
-            <form action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST" class="booking-form compact-form">
+            <form id="inquiryForm" action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST"
+                class="booking-form compact-form">
                 <!-- Hidden fields -->
                 <input type="hidden" name="_subject" value="New Flight Promo Inquiry!">
                 <input type="hidden" name="_captcha" value="false">
@@ -652,21 +832,21 @@
 
                 <div class="form-group tight">
                     <label>Full Name</label>
-                    <input type="text" name="name" required placeholder="Name">
+                    <input type="text" name="name" required placeholder="Your Name">
                 </div>
 
                 <div class="form-group tight">
-                    <label>Facebook Link</label>
-                    <input type="url" name="facebook" required placeholder="fb.com/profile">
+                    <label>Facebook Name</label>
+                    <input type="text" name="facebook" required placeholder="e.g. Juan dela Cruz (for contact)">
                 </div>
 
                 <div class="form-group tight">
                     <label>Mobile No.</label>
-                    <input type="tel" name="mobile" required placeholder="0917...">
+                    <input type="tel" name="mobile" required placeholder="e.g. 0917xxxxxxx">
                 </div>
 
                 <button type="submit" class="btn-claim" style="margin-top: 15px;">
-                    Submit Inquiry
+                    Send Inquiry via Email
                 </button>
             </form>
 
@@ -734,9 +914,89 @@
             const airlineSelect = document.getElementById('newAirline');
             airlineSelect.innerHTML = airlines.map(a => `<option value="${a}">${a}</option>`).join('');
 
-            // Setup Category Listeners (Optional if we show all, but keeping for data-cat)
-            // Functionality simplified: Just init.
+            // Populate Airports
             populateAirports();
+
+            // Populate Current Email Setting
+            // Extract from action="https://formsubmit.co/email@addr.com"
+            const currentAction = document.getElementById('inquiryForm').getAttribute("action");
+            if (currentAction && currentAction.includes("formsubmit.co/")) {
+                const currentEmail = currentAction.split("formsubmit.co/")[1];
+                document.getElementById('adminEmailInput').value = currentEmail;
+            }
+        }
+
+        // --- SAVE ADMIN EMAIL (Config Update) ---
+        async function saveAdminEmail() {
+            const newEmail = document.getElementById('adminEmailInput').value.trim();
+            const token = document.getElementById('githubToken').value;
+            const username = document.getElementById('ghUsername').value;
+            const repo = document.getElementById('ghRepo').value;
+            const statusBox = document.getElementById('statusMsg');
+
+            if (!newEmail.includes("@") || !newEmail.includes(".")) {
+                alert("Please leave a valid email.");
+                return;
+            }
+            if (!token) { alert("Please login/provide GitHub token first."); return; }
+
+            // UI Feedback
+            const btn = document.querySelector('button[onclick="saveAdminEmail()"]');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Saving...";
+            btn.disabled = true;
+            statusBox.style.display = 'block';
+            statusBox.innerText = "Updating Email Configuration...";
+
+            try {
+                const REPO_FULL = `${username}/${repo}`;
+                const PATH = "index.html";
+                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
+
+                // 1. Fetch Current File
+                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
+                if (!getRes.ok) throw new Error("Fetch failed");
+
+                const data = await getRes.json();
+                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+
+                // 2. Regex Replace the Action URL
+                // Pattern: action="https://formsubmit.co/OLD_EMAIL"
+                // We want to replace it with action="https://formsubmit.co/NEW_EMAIL"
+
+                const regex = /action="https:\/\/formsubmit\.co\/[^"]*"/;
+                if (!regex.test(currentContent)) throw new Error("Could not find email setting in file.");
+
+                const newActionStr = `action="https://formsubmit.co/${newEmail}"`;
+                const newContent = currentContent.replace(regex, newActionStr);
+
+                // 3. Commit
+                const putRes = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: { 'Authorization': `token ${token}` },
+                    body: JSON.stringify({
+                        message: `Update Inquiry Email to: ${newEmail}`,
+                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
+                        sha: data.sha
+                    })
+                });
+
+                if (!putRes.ok) throw new Error("Failed to update email.");
+
+                // Success
+                alert("Email Settings Updated! Inquiries will now go to: " + newEmail);
+                // Update local DOM to reflect immediately
+                document.getElementById('inquiryForm').action = `https://formsubmit.co/${newEmail}`;
+
+                statusBox.style.display = 'none';
+
+            } catch (err) {
+                console.error(err);
+                alert("Failed to save email: " + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         // --- IMPROVED POPULATE: Show All like Real Ticketing ---
@@ -812,9 +1072,11 @@
                 pass.value = "";
 
                 closeLogin();
-                // Switch View
-                document.getElementById('customerView').style.display = 'none';
+
+                // VIEW LOGIC: Show Admin Top, Hide Hero, Keep Board
                 document.getElementById('adminView').style.display = 'block';
+                document.getElementById('heroSection').style.display = 'none';
+                document.getElementById('customerView').style.display = 'block'; // Ensure grid is seen
 
                 // FORCE POPULATE ON LOGIN
                 initAdminForm();
@@ -828,7 +1090,9 @@
         }
 
         function logoutAdmin() {
+            // Revert View
             document.getElementById('adminView').style.display = 'none';
+            document.getElementById('heroSection').style.display = 'block';
             document.getElementById('customerView').style.display = 'block';
 
             // Hide Delete Buttons
