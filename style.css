@@ -1,0 +1,515 @@
+/* 
+   Theme: "Cheapest Air Premium" - Dark Mode / Glassmorphism
+   Fonts: Outfit (Headings), Plus Jakarta Sans (Body)
+*/
+
+:root {
+    --bg-dark: #0f172a;
+    /* Deep Slate */
+    --bg-card: rgba(30, 41, 59, 0.7);
+    /* Translucent Slate */
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+
+    --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    /* Blue to Violet */
+    --accent-glow: 0 0 20px rgba(139, 92, 246, 0.5);
+
+    --brand-orange: #f97316;
+    /* For 'Piso Fare' / Urgent tags */
+
+    --border-glass: 1px solid rgba(255, 255, 255, 0.1);
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    /* Subtle background pattern */
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+    min-height: 100vh;
+}
+
+/* Typography Overrides */
+h1,
+h2,
+h3,
+.logo,
+.price-val,
+.code {
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Navbar */
+.navbar {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: var(--border-glass);
+    padding: 1.2rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.8rem;
+    font-weight: 900;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+.logo span {
+    color: white;
+    -webkit-text-fill-color: white;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--text-muted);
+    margin-left: 24px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+}
+
+nav a:hover,
+nav a.active {
+    color: white;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 6rem 1rem 4rem 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Glow effect behind hero text */
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 300px;
+    background: var(--accent-gradient);
+    filter: blur(100px);
+    opacity: 0.2;
+    z-index: -1;
+}
+
+.hero h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    letter-spacing: -1.5px;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    font-weight: 300;
+}
+
+/* Filter Bar */
+.filter-bar {
+    margin-bottom: 3rem;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: var(--border-glass);
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Outfit', sans-serif;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.filter-btn.active {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: var(--accent-glow);
+}
+
+/* Grid */
+.section-title {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.promo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 6rem;
+}
+
+/* Premium Glass Card */
+.ticket-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    border: var(--border-glass);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow-glass);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.ticket-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Route Display */
+.flight-route {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.location {
+    text-align: center;
+}
+
+.code {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(to bottom, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+    line-height: 1;
+}
+
+.city {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.plane-icon {
+    font-size: 1.5rem;
+    color: #8b5cf6;
+    /* Violet */
+    transform: rotate(90deg);
+    text-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+}
+
+/* Details */
+.flight-details {
+    flex-grow: 1;
+    margin-bottom: 24px;
+}
+
+.tag-piso {
+    display: inline-block;
+    background: var(--brand-orange);
+    color: white;
+    font-weight: 800;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+    font-family: 'Outfit', sans-serif;
+}
+
+.travel-date,
+.airline {
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pricing {
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.price-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.price-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+/* Button */
+.btn-claim {
+    background: var(--accent-gradient);
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Button hover shine effect */
+.btn-claim::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: 0.5s;
+}
+
+.btn-claim:hover::after {
+    left: 100%;
+}
+
+.btn-claim:hover {
+    box-shadow: var(--accent-glow);
+    transform: translateY(-2px);
+}
+
+/* Modal Dark Theme */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+/* Admin Panel Styles */
+.admin-panel {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.admin-form .form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.admin-form input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #0f172a;
+    color: white;
+}
+
+/* Modal Compact Styles */
+.modal-content {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 1.5rem;
+    /* Reduced padding */
+    border-radius: 20px;
+    width: 90%;
+    max-width: 420px;
+    /* Smaller width */
+    max-height: 90vh;
+    /* Prevent overflow on small screens */
+    overflow-y: auto;
+    /* Scrollable if too tall */
+    text-align: center;
+    position: relative;
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header h3 {
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.modal-flight-info {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 2rem 0;
+    padding: 1.5rem;
+    border-radius: 16px;
+}
+
+.modal-flight-info h2 {
+    color: #8b5cf6;
+    margin-bottom: 0px;
+}
+
+.modal-steps {
+    color: #94a3b8;
+    text-align: left;
+}
+
+.compact-info {
+    padding: 1rem;
+    margin: 1rem 0;
+    font-size: 1.1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+}
+
+.compact-steps p {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+    color: #94a3b8;
+}
+
+/* Form Styles */
+.booking-form {
+    text-align: left;
+    margin-top: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group.tight {
+    margin-bottom: 10px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.form-group.tight label {
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+}
+
+.form-group input,
+.admin-select {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    outline: none;
+    transition: 0.3s;
+}
+
+.admin-select option {
+    background: #1e293b;
+    color: white;
+}
+
+.form-group input:focus {
+    border-color: #3b82f6;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.close-modal {
+    color: #64748b;
+}
+
+.close-modal:hover {
+    color: white;
+}
+
+/* Footer */
+footer {
+    border-top: var(--border-glass);
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+}

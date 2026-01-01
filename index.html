@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cheapest Air | Flight Promos</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts: 'Outfit' for headings, 'Plus Jakarta Sans' for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close-modal" onclick="closeLogin()">&times;</span>
+            <div class="modal-header">
+                <h3>Admin Login</h3>
+                <p>Enter your credentials to manage promos.</p>
+            </div>
+            <div class="booking-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUser" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPass" placeholder="••••••••">
+                </div>
+                <button onclick="attemptLogin()" class="btn-claim" style="margin-top: 10px;">Log In</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="container">
+            <div class="logo">✈️ Cheapest<span>Air</span></div>
+            <nav>
+                <a href="#" class="active">Flight Promos</a>
+                <a href="#">About Us</a>
+                <a href="#" onclick="showLogin()">Log In</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- CUSTOMER VIEW WRAPPER -->
+    <div id="customerView">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Fly For Less. Standard Class.</h1>
+                <p>Exclusive airline promo seats released daily.</p>
+            </div>
+        </section>
+
+        <!-- Filter / Status Bar -->
+        <div class="filter-bar container">
+            <button class="filter-btn active" onclick="filterDeals('all')">Show All</button>
+            <button class="filter-btn" onclick="filterDeals('piso')">🔥 Piso Fare</button>
+            <button class="filter-btn" onclick="filterDeals('international')">🌏 International</button>
+            <button class="filter-btn" onclick="filterDeals('domestic')">🏝️ Domestic</button>
+        </div>
+
+        <!-- Main Content: Promo Grid -->
+        <main class="container">
+            <h2 class="section-title">Latest Flight Deals</h2>
+
+            <div class="promo-grid" id="mainPromoGrid">
+
+                <!-- Flight Card: Example 1 -->
+                <article class="ticket-card" data-category="international">
+                    <div class="flight-route">
+                        <div class="location">
+                            <span class="code">MNL</span>
+                            <span class="city">Manila</span>
+                        </div>
+                        <div class="plane-icon">✈️</div>
+                        <div class="location">
+                            <span class="code">NRT</span>
+                            <span class="city">Tokyo</span>
+                        </div>
+                    </div>
+                    <div class="flight-details">
+                        <p class="travel-date">📅 Travel Period: Oct - Dec 2026</p>
+                        <p class="airline">Airline: Cebu Pac / PAL</p>
+                        <div class="pricing">
+                            <div class="price-label">Roundtrip All-in</div>
+                            <div class="price-val">₱8,999</div>
+                        </div>
+                    </div>
+                    <button onclick="openBooking('Manila to Tokyo', '₱8,999')" class="btn-claim">
+                        Book This Flight
+                    </button>
+                </article>
+
+                <!-- Flight Card: Example 2 -->
+                <article class="ticket-card" data-category="piso international">
+                    <div class="flight-route">
+                        <div class="location">
+                            <span class="code">MNL</span>
+                            <span class="city">Manila</span>
+                        </div>
+                        <div class="plane-icon">✈️</div>
+                        <div class="location">
+                            <span class="code">KIX</span>
+                            <span class="city">Osaka</span>
+                        </div>
+                    </div>
+                    <div class="flight-details">
+                        <span class="tag-piso">🔥 PISO FARE WATCH</span>
+                        <p class="travel-date">📅 Travel Period: Sep 2026</p>
+                        <p class="airline">Airline: Jetstar</p>
+                        <div class="pricing">
+                            <div class="price-label">One-way Base Fare</div>
+                            <div class="price-val">₱2,500</div>
+                        </div>
+                    </div>
+                    <button onclick="openBooking('Manila to Osaka', '₱2,500/base')" class="btn-claim">
+                        Book This Flight
+                    </button>
+                </article>
+
+            </div>
+        </main>
+    </div> <!-- End Customer View -->
+
+
+    <!-- ADMIN VIEW (Direct Promo Adder & Auto-Save) -->
+    <div id="adminView" class="container" style="display: none; padding-top: 40px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 style="font-size: 2rem;">👑 Admin Dashboard</h1>
+            <button onclick="logoutAdmin()" class="filter-btn" style="border-color: #ef4444; color: #ef4444;">Log
+                Out</button>
+        </div>
+
+        <div class="admin-panel">
+            <h3>Add New Promo</h3>
+            <div class="booking-form admin-form">
+
+                <!-- Category Selection -->
+                <div class="form-group tight">
+                    <label>Category</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <label><input type="radio" name="newCat" value="international" checked> International</label>
+                        <label><input type="radio" name="newCat" value="domestic"> Domestic</label>
+                        <label><input type="radio" name="newCat" value="piso international"> Piso Fare</label>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC DROPDOWNS: Origin & Destination -->
+                <div class="form-row">
+                    <div class="form-group tight" style="flex: 1;">
+                        <label>From (Origin)</label>
+                        <select id="newOrigin" class="admin-select">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group tight" style="flex: 1;">
+                        <label>To (Destination)</label>
+                        <select id="newDest" class="admin-select">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Airline Selection -->
+                <div class="form-group tight">
+                    <label>Airline</label>
+                    <select id="newAirline" class="admin-select">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <!-- Price & Details -->
+                <div class="form-row">
+                    <div class="form-group tight" style="flex: 1;">
+                        <label>Price</label>
+                        <input type="text" id="newPrice" placeholder="₱5,999">
+                    </div>
+                    <div class="form-group tight" style="flex: 1;">
+                        <label>Travel Dates</label>
+                        <input type="text" id="newDetails" placeholder="Jan - Mar 2026">
+                    </div>
+                </div>
+
+                <!-- GitHub Token for Save -->
+                <div
+                    style="background: rgba(255,100,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed orange;">
+                    <label style="color: orange; font-size: 0.9rem; font-weight: bold;">🔑 SECRET KEY (Required for
+                        Permanent Save)</label>
+                    <p style="font-size: 0.8rem; color: #ccc; margin-bottom: 8px;">Paste your GitHub Token below.
+                        Without this, your promo will disappear when you refresh.</p>
+                    <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx..."
+                        style="font-size: 0.9rem; margin-bottom: 5px;">
+                    <div style="margin-top: 5px;">
+                        <label style="font-size: 0.8rem; color: #fff; cursor: pointer;">
+                            <input type="checkbox" id="saveToken"> Remember my key (Save in browser)
+                        </label>
+                    </div>
+                </div>
+
+                <button onclick="addNewPromo()" class="btn-claim"
+                    style="background: var(--brand-orange); width: 100%; font-size: 1.1rem;">
+                    + Save & Publish to Site
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <footer>
+        <p>&copy; 2026 Cheapest Air. Unbeatable Prices.</p>
+    </footer>
+
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <h3>Flight Inquiry</h3>
+                <p style="font-size: 0.9rem; color: #94a3b8;">You are selecting:</p>
+            </div>
+
+            <div class="modal-flight-info compact-info">
+                <span id="modalRoute" style="color: #8b5cf6; font-weight: bold;">MNL ➝ NRT</span>
+                <span style="margin: 0 10px;">|</span>
+                <span id="modalPrice" style="color: white; font-weight: 700;">₱8,999</span>
+            </div>
+
+            <div class="modal-steps compact-steps">
+                <p>1. Send us your inquiry.</p>
+                <p>2. We verify availability.</p>
+                <p>3. Pay via GCash/Bank.</p>
+            </div>
+
+            <!-- Booking Form -->
+            <form action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST" class="booking-form compact-form">
+                <!-- Hidden fields -->
+                <input type="hidden" name="_subject" value="New Flight Promo Inquiry!">
+                <input type="hidden" name="_captcha" value="false">
+                <input type="hidden" id="inputRoute" name="Flight Route">
+                <input type="hidden" id="inputPrice" name="Price">
+
+                <div class="form-group tight">
+                    <label>Full Name</label>
+                    <input type="text" name="name" required placeholder="Name">
+                </div>
+
+                <div class="form-group tight">
+                    <label>Facebook Link</label>
+                    <input type="url" name="facebook" required placeholder="fb.com/profile">
+                </div>
+
+                <div class="form-group tight">
+                    <label>Mobile No.</label>
+                    <input type="tel" name="mobile" required placeholder="0917...">
+                </div>
+
+                <button type="submit" class="btn-claim" style="margin-top: 15px;">
+                    Submit Inquiry
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        // --- DATA: Airports & Airlines Database ---
+        const airports = {
+            domestic: [
+                { code: "MNL", city: "Manila (NAIA)" },
+                { code: "CEB", city: "Cebu (Mactan)" },
+                { code: "DVO", city: "Davao" },
+                { code: "CRK", city: "Clark" },
+                { code: "MPH", city: "Caticlan (Boracay)" },
+                { code: "KLO", city: "Kalibo" },
+                { code: "PPS", city: "Puerto Princesa" },
+                { code: "USU", city: "Coron (Busuanga)" },
+                { code: "IAO", city: "Siargao" },
+                { code: "TAG", city: "Bohol (Panglao)" },
+                { code: "BCD", city: "Bacolod" },
+                { code: "ILO", city: "Iloilo" },
+                { code: "TAC", city: "Tacloban" },
+                { code: "ZAM", city: "Zamboanga" },
+                { code: "GES", city: "General Santos" },
+                { code: "LAO", city: "Laoag" }
+            ],
+            international: [
+                { code: "NRT", city: "Tokyo (Narita)" },
+                { code: "HND", city: "Tokyo (Haneda)" },
+                { code: "KIX", city: "Osaka (Kansai)" },
+                { code: "FUK", city: "Fukuoka" },
+                { code: "CTS", city: "Sapporo" },
+                { code: "ICN", city: "Seoul (Incheon)" },
+                { code: "PUS", city: "Busan" },
+                { code: "SIN", city: "Singapore" },
+                { code: "BKK", city: "Bangkok (Suvarnabhumi)" },
+                { code: "DMK", city: "Bangkok (Don Mueang)" },
+                { code: "HKG", city: "Hong Kong" },
+                { code: "TPE", city: "Taipei" },
+                { code: "KUL", city: "Kuala Lumpur" },
+                { code: "SGN", city: "Ho Chi Minh City" },
+                { code: "DPS", city: "Bali (Denpasar)" },
+                { code: "DXB", city: "Dubai" },
+                { code: "DOH", city: "Doha" },
+                { code: "SYD", city: "Sydney" },
+                { code: "MEL", city: "Melbourne" },
+                { code: "LAX", city: "Los Angeles" },
+                { code: "SFO", city: "San Francisco" },
+                { code: "JFK", city: "New York" },
+                { code: "LHR", city: "London (Heathrow)" }
+            ]
+        };
+
+        const airlines = [
+            "Cebu Pacific", "Philippine Airlines (PAL)", "AirAsia", "PAL Express",
+            "Cebgo", "Jetstar", "Scoot", "Singapore Airlines", "Cathay Pacific",
+            "EVA Air", "Korean Air", "Asiana Airlines", "Japan Airlines (JAL)",
+            "ANA", "Emirates", "Qatar Airways", "Etihad", "Qantas", "United Airlines"
+        ];
+
+        // --- INIT: Admin Form Logic ---
+        function initAdminForm() {
+            // Populate Airlines
+            const airlineSelect = document.getElementById('newAirline');
+            airlineSelect.innerHTML = airlines.map(a => `<option value="${a}">${a}</option>`).join('');
+
+            // Setup Category Listeners
+            document.querySelectorAll('input[name="newCat"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    populateAirports(e.target.value);
+                });
+            });
+
+            // Default Populate
+            populateAirports('international');
+        }
+
+        function populateAirports(category) {
+            const isDomestic = category === 'domestic';
+            const listToUse = isDomestic ? airports.domestic : airports.international;
+
+            // Origins (Always include Domestic hubs)
+            const originSelect = document.getElementById('newOrigin');
+            const destSelect = document.getElementById('newDest');
+
+            // Helper to build options
+            const buildOpts = (list) => list.map(item => `<option value="${item.code}|${item.city}">${item.city} (${item.code})</option>`).join('');
+
+            originSelect.innerHTML = buildOpts(airports.domestic);
+
+            // For Destination, if Piso Fare, maybe mix? For now, logic follows category strict
+            if (category.includes('piso')) {
+                // Combine for Piso
+                destSelect.innerHTML = buildOpts(airports.domestic.concat(airports.international));
+            } else {
+                destSelect.innerHTML = buildOpts(listToUse);
+            }
+        }
+
+
+        // --- VIEW NAVIGATION ---
+        function showLogin() {
+            document.getElementById('loginModal').classList.add('show');
+            // Check for saved token
+            const savedToken = localStorage.getItem('gh_token');
+            if (savedToken) {
+                document.getElementById('githubToken').value = savedToken;
+                document.getElementById('saveToken').checked = true;
+            }
+        }
+
+        function closeLogin() {
+            document.getElementById('loginModal').classList.remove('show');
+        }
+
+        function attemptLogin() {
+            const user = document.getElementById('loginUser');
+            const pass = document.getElementById('loginPass');
+
+            if (user.value === "admin" && pass.value === "admin123") {
+                // CLEAR CREDENTIALS
+                user.value = "";
+                pass.value = "";
+
+                closeLogin();
+                // Switch View
+                document.getElementById('customerView').style.display = 'none';
+                document.getElementById('adminView').style.display = 'block';
+                initAdminForm();
+            } else {
+                alert("Incorrect username or password");
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminView').style.display = 'none';
+            document.getElementById('customerView').style.display = 'block';
+        }
+
+
+        // --- GITHUB API AUTO-SAVE LOGIC ---
+        async function addNewPromo() {
+            const token = document.getElementById('githubToken').value;
+            if (!token) {
+                alert("⚠️ Cannot Save Permanently!\n\nPlease enter the GitHub Secret Key. Otherwise this saves nowhere.");
+                return;
+            }
+
+            // Save Token Preference
+            if (document.getElementById('saveToken').checked) {
+                localStorage.setItem('gh_token', token);
+            } else {
+                localStorage.removeItem('gh_token');
+            }
+
+            // Get Form Values
+            const originVal = document.getElementById('newOrigin').value.split('|');
+            const destVal = document.getElementById('newDest').value.split('|');
+            const airline = document.getElementById('newAirline').value;
+            const category = document.querySelector('input[name="newCat"]:checked').value;
+            const price = document.getElementById('newPrice').value;
+            const details = document.getElementById('newDetails').value;
+
+            // Construct New Card HTML
+            const pisoTag = category.includes('piso') ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
+
+            // HTML Block
+            const newCardHTML = `
+            <!-- ADDDED PROMO: ${originVal[1]} to ${destVal[1]} -->
+            <article class="ticket-card" data-category="${category}">
+                <div class="flight-route">
+                    <div class="location"><span class="code">${originVal[0]}</span><span class="city">${originVal[1]}</span></div>
+                    <div class="plane-icon">✈️</div>
+                    <div class="location"><span class="code">${destVal[0]}</span><span class="city">${destVal[1]}</span></div>
+                </div>
+                <div class="flight-details">
+                    ${pisoTag}
+                    <p class="travel-date">📅 ${details}</p>
+                    <p class="airline">Airline: ${airline}</p>
+                    <div class="pricing">
+                        <div class="price-label">Promo Fare</div>
+                        <div class="price-val">${price}</div>
+                    </div>
+                </div>
+                <button onclick="openBooking('${originVal[1]} to ${destVal[1]}', '${price}')" class="btn-claim">Book This Flight</button>
+            </article>`;
+
+            // Visual Feedback
+            const btn = document.querySelector('.admin-form .btn-claim');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Connect to GitHub...";
+            btn.disabled = true;
+
+            try {
+                // 1. Config (Adjust this if your REPO name is different!)
+                const REPO = "ALDREAM/cheapest-air-promo";
+                const PATH = "index.html";
+                const API_URL = `https://api.github.com/repos/${REPO}/contents/${PATH}`;
+
+                // 2. Fetch Current File
+                const getRes = await fetch(API_URL, {
+                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+                });
+
+                if (!getRes.ok) {
+                    const err = await getRes.json();
+                    throw new Error(err.message || "Repo not found.");
+                }
+
+                const data = await getRes.json();
+                const sha = data.sha;
+
+                // Decode Content (Unicode Safe)
+                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+
+                // 3. Inject New Card
+                const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
+                if (!currentContent.includes(insertionPoint)) throw new Error("Critical: Could not find insertion point.");
+
+                const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
+
+                // 4. Push Update
+                const putRes = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+                    body: JSON.stringify({
+                        message: `Add Promo: ${originVal[1]} to ${destVal[1]}`,
+                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
+                        sha: sha
+                    })
+                });
+
+                if (!putRes.ok) throw new Error("Failed to commit changes.");
+
+                alert("🎉 SUCCESS! Saved to GitHub.\n\nYour site will update in 1-2 minutes!");
+                location.reload();
+
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message + "\n\nCheck if your Repo Name is correct (ALDREAM/cheapest-air-promo) and Token is valid.");
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+
+        // --- STANDARD SITE LOGIC ---
+
+        function filterDeals(category) {
+            const cards = document.querySelectorAll('.ticket-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            cards.forEach(card => {
+                if (category === 'all' || card.dataset.category.includes(category)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        const modal = document.getElementById('bookingModal');
+        const modalRoute = document.getElementById('modalRoute');
+        const modalPrice = document.getElementById('modalPrice');
+        const inputRoute = document.getElementById('inputRoute');
+        const inputPrice = document.getElementById('inputPrice');
+
+        function openBooking(route, price) {
+            modalRoute.innerText = route;
+            modalPrice.innerText = price;
+            inputRoute.value = route;
+            inputPrice.value = price;
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            modal.classList.remove('show');
+        }
+
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+
+</html>
