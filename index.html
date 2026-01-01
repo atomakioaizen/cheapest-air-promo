@@ -6,7 +6,331 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cheapest Air | Flight Promos</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts: 'Outfit' for headings, 'Plus Jakarta Sans' for body -->
+    <style>
+        .ticket-card {
+            position: relative;
+        }
+
+        .btn-delete-card {
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+            /* Hidden for customers */
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .btn-delete-card:hover {
+            background: #c62828;
+            color: white;
+        }
+
+        /* ... */
+    </style>
+
+    <!-- ... (In JS) ... -->
+    <script>
+        // ... (Data & Init preserved) ...
+
+        function showDeleteButtons(show) {
+            document.querySelectorAll('.btn-delete-card').forEach(btn => {
+                btn.style.display = show ? 'flex' : 'none';
+            });
+        }
+
+        function attemptLogin() {
+            const user = document.getElementById('loginUser');
+            const pass = document.getElementById('loginPass');
+
+            if (user.value === "admin" && pass.value === "admin123") {
+                // CLEAR CREDENTIALS
+                user.value = "";
+                pass.value = "";
+
+                closeLogin();
+                // Switch View
+                document.getElementById('customerView').style.display = 'none';
+                document.getElementById('adminView').style.display = 'block';
+
+                // FORCE POPULATE ON LOGIN
+                initAdminForm();
+
+                // Show Delete Buttons for existing cards (if any have the class)
+                showDeleteButtons(true);
+
+            } else {
+                alert("Incorrect username or password");
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminView').style.display = 'none';
+            document.getElementById('customerView').style.display = 'block';
+
+            // Hide Delete Buttons
+            showDeleteButtons(false);
+
+            // Clear Status
+            const stat = document.getElementById('statusMsg');
+            stat.style.display = 'none';
+            stat.innerText = '';
+        }
+
+        // --- FORM RESETTER ---
+        function resetForm() {
+            // Text/Values
+            document.getElementById('newPrice').value = "";
+            document.getElementById('dateStart').value = "";
+            document.getElementById('dateEnd').value = "";
+            document.getElementById('isPiso').checked = false;
+
+            // Dropdowns (Set to first option or specific defaults)
+            const origin = document.getElementById('newOrigin');
+            if (origin.options.length > 0) origin.selectedIndex = 0; // Default MNL usually
+
+            const dest = document.getElementById('newDest');
+            if (dest.options.length > 1) dest.selectedIndex = 1; // Default NRT usually
+
+            document.getElementById('newAirline').selectedIndex = 0;
+            document.getElementById('newCabin').selectedIndex = 0;
+
+            // Radios
+            document.querySelector('input[name="tripType"][value="roundtrip"]').checked = true;
+            document.querySelector('input[name="baseCat"][value="international"]').checked = true;
+
+            // Trigger UI Updates
+            toggleTripType();
+        }
+
+
+        // --- DELETE PROMO LOGIC ---
+        async function deletePromo(id, btnElement) {
+            const confirmDelete = confirm("Are you sure you want to DELETE this promo forever?");
+            if (!confirmDelete) return;
+
+            const token = document.getElementById('githubToken').value;
+            const username = document.getElementById('ghUsername').value;
+            const repo = document.getElementById('ghRepo').value;
+
+            if (!token) {
+                alert("Please login as Admin to delete.");
+                return;
+            }
+
+            // feedback
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "⏳";
+            btnElement.disabled = true;
+
+            try {
+                const REPO_FULL = `${username}/${repo}`;
+                const PATH = "index.html";
+                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
+
+                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
+                if (!getRes.ok) throw new Error("Fetch failed");
+
+                const data = await getRes.json();
+                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+
+                // Regex to find the promo block by ID
+                // Pattern: Look for the article tag with the specific ID and remove it.
+                // Safe approach: <article[^>]*id="promo-123"[^>]*>[\s\S]*?<\/article>
+                const regex = new RegExp(`<article[^>]*id="${id}"[^>]*>[\\s\\S]*?<\\/article>`, 'g');
+
+                if (!regex.test(currentContent)) {
+                    throw new Error("Promo not found in file (might be an old promo without ID).");
+                }
+
+                const newContent = currentContent.replace(regex, ''); // Remove it
+
+                // Push Update
+                const putRes = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: { 'Authorization': `token ${token}` },
+                    body: JSON.stringify({
+                        message: `Delete Promo ID: ${id}`,
+                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
+                        sha: data.sha
+                    })
+                });
+
+                if (!putRes.ok) throw new Error("Failed to delete on GitHub.");
+
+                // Success: Remove from DOM
+                const card = document.getElementById(id);
+                if (card) card.remove();
+
+                alert("Promo Deleted Successfully!");
+
+            } catch (err) {
+                console.error(err);
+                alert("Delete Failed: " + err.message);
+                btnElement.innerText = "🗑️";
+                btnElement.disabled = false;
+            }
+        }
+
+
+        async function addNewPromo() {
+            // ... (Token checks same) ...
+            const token = document.getElementById('githubToken').value;
+            const username = document.getElementById('ghUsername').value;
+            const repo = document.getElementById('ghRepo').value;
+            const statusBox = document.getElementById('statusMsg');
+
+            if (!token || !username || !repo) { alert("⚠️ Missing Settings!"); return; }
+
+            // Save Settings
+            if (document.getElementById('saveToken').checked) {
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_username', username);
+                localStorage.setItem('gh_repo', repo);
+            }
+
+            // Get Values
+            const originVal = document.getElementById('newOrigin').value.split('|');
+            const destVal = document.getElementById('newDest').value.split('|');
+            const airline = document.getElementById('newAirline').value;
+            let price = document.getElementById('newPrice').value.trim();
+            const cabin = document.getElementById('newCabin').value;
+
+            // Auto-Peso & Format
+            // Remove existing non-numeric chars except comma/dot? No, simpler.
+            // If it looks like a number "5000", make it "₱5,000"
+            const rawNum = price.replace(/[^0-9.]/g, '');
+            if (rawNum && !price.includes('₱')) {
+                const num = parseFloat(rawNum);
+                price = "₱" + num.toLocaleString('en-US');
+            } else if (!price.includes('₱') && hasNumber(price)) {
+                price = "₱" + price;
+            }
+
+            function hasNumber(myString) { return /\d/.test(myString); }
+
+
+            // Categories
+            const baseCat = document.querySelector('input[name="baseCat"]:checked').value;
+            const isPiso = document.getElementById('isPiso').checked;
+            let finalCat = baseCat;
+            if (isPiso) finalCat += " piso";
+
+            // Date
+            const dStart = document.getElementById('dateStart').value;
+            const dEnd = document.getElementById('dateEnd').value;
+            const tripType = document.querySelector('input[name="tripType"]:checked').value;
+            const isOneWay = tripType === 'oneway';
+
+            if (!dStart) { alert("Please select a travel date."); return; }
+            if (tripType === 'roundtrip' && !dEnd) { alert("Please select a return date."); return; }
+
+            const dateStr = formatDateRange(dStart, dEnd, isOneWay);
+
+            // ID Generation
+            const promoID = "promo-" + Date.now();
+
+            // Construct HTML
+            const pisoTag = isPiso ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
+            const tripLabel = tripType === 'multicity' ? '<span style="font-size:0.7em; background:#333; padding:2px 4px; border-radius:3px;">Multi-city</span>' : '';
+
+            // Added styling: display:flex or block for admin button. defaults to hidden via CSS class but we add inline style if currently admin?
+            // Actually, since we are adding it FROM admin view, we can just make it visible initially? 
+            // No, because this HTML goes to the public site. It MUST be display:none default (via css class) and shown only by JS on load if admin.
+
+            const newCardHTML = `
+            <!-- ADDDED PROMO: ${originVal[1]} to ${destVal[1]} -->
+            <article class="ticket-card" id="${promoID}" data-category="${finalCat}">
+                <button class="btn-delete-card" onclick="deletePromo('${promoID}', this)" title="Delete Promo">🗑️</button>
+                <div class="flight-route">
+                    <div class="location"><span class="code">${originVal[0]}</span><span class="city">${originVal[1]}</span></div>
+                    <div class="plane-icon">✈️ ${tripLabel}</div>
+                    <div class="location"><span class="code">${destVal[0]}</span><span class="city">${destVal[1]}</span></div>
+                </div>
+                <div class="flight-details">
+                    ${pisoTag}
+                    <p class="travel-date">📅 ${dateStr}</p>
+                    <p class="airline">Airline: ${airline} (${cabin})</p>
+                    <div class="pricing">
+                        <div class="price-label">Promo Fare</div>
+                        <div class="price-val">${price}</div>
+                    </div>
+                </div>
+                <button onclick="openBooking('${originVal[1]} to ${destVal[1]}', '${price}')" class="btn-claim">Book This Flight</button>
+            </article>`;
+
+            // UI Feedback
+            const btn = document.querySelector('.admin-form .btn-claim');
+            const originalText = btn.innerText;
+            btn.innerText = "⏳ Saving...";
+            btn.disabled = true;
+            statusBox.style.display = 'block';
+            statusBox.style.background = '#e0f2fe';
+            statusBox.style.color = '#0284c7';
+            statusBox.innerText = "Syncing with GitHub...";
+
+            try {
+                // ... (Fetch logic preserved) ...
+                const REPO_FULL = `${username}/${repo}`;
+                const PATH = "index.html";
+                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
+
+                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
+                if (!getRes.ok) throw new Error("GitHub Error: " + getRes.status);
+
+                const data = await getRes.json();
+                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+                const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
+
+                const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
+
+                const putRes = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: { 'Authorization': `token ${token}` },
+                    body: JSON.stringify({
+                        message: `Add Promo: ${originVal[1]} to ${destVal[1]}`,
+                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
+                        sha: data.sha
+                    })
+                });
+
+                if (!putRes.ok) throw new Error("Failed to commit.");
+
+                // Success
+                btn.innerText = originalText;
+                btn.disabled = false;
+                statusBox.style.background = '#dcfce7';
+                statusBox.style.color = '#166534';
+                statusBox.innerHTML = `✅ <b>Promo Added!</b><br>${originVal[1]} ➝ ${destVal[1]}`;
+
+                // Add to grid
+                const grid = document.getElementById('mainPromoGrid');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newCardHTML;
+                const newNode = tempDiv.firstElementChild;
+                grid.insertBefore(newNode, grid.firstChild);
+
+                // Show delete button immediately since we are admin
+                newNode.querySelector('.btn-delete-card').style.display = 'flex';
+
+                // RESET FORM
+                resetForm();
+
+                // Fade Msg
+                setTimeout(() => { statusBox.style.display = 'none'; }, 5000);
+
+            } catch (err) {
+                console.error(err);
+                btn.innerText = originalText;
+                btn.disabled = false;
+                statusBox.style.background = '#fee2e2';
+                statusBox.innerText = "Error: " + err.message;
+            }
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -74,142 +398,10 @@
 
             <div class="promo-grid" id="mainPromoGrid">
 
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" id="promo-1767343649618" data-category="international piso">
-                <button class="btn-delete-card" onclick="deletePromo('promo-1767343649618', this)" title="Delete Promo">🗑️</button>
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️ </div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Dec 30 - Jan 20, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">₱1</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '₱1')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" data-category="international piso">
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️ </div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Dec 31 - Jan 1, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">1</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '1')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" data-category="domestic piso">
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️ </div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Dec 31 - Jan 1, 2026</p>
-                    <p class="airline">Airline: Philippine Airlines (PAL) (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">1</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '1')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Laoag to General Santos -->
-            <article class="ticket-card" data-category="domestic">
-                <div class="flight-route">
-                    <div class="location"><span class="code">LAO</span><span class="city">Laoag</span></div>
-                    <div class="plane-icon">✈️</div>
-                    <div class="location"><span class="code">GES</span><span class="city">General Santos</span></div>
-                </div>
-                <div class="flight-details">
-                    
-                    <p class="travel-date">📅 Jan 12 - Jan 19, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">234</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Laoag to General Santos', '234')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Tacloban to Tokyo (Narita) -->
-            <article class="ticket-card" data-category="piso international">
-                <div class="flight-route">
-                    <div class="location"><span class="code">TAC</span><span class="city">Tacloban</span></div>
-                    <div class="plane-icon">✈️</div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Jan 12 - Jan 19, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">2323</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Tacloban to Tokyo (Narita)', '2323')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Laoag to Iloilo -->
-            <article class="ticket-card" data-category="piso international">
-                <div class="flight-route">
-                    <div class="location"><span class="code">LAO</span><span class="city">Laoag</span></div>
-                    <div class="plane-icon">✈️</div>
-                    <div class="location"><span class="code">ILO</span><span class="city">Iloilo</span></div>
-                </div>
-                <div class="flight-details">
-                    <span class="tag-piso">🔥 PISO FARE WATCH</span>
-                    <p class="travel-date">📅 Jan 12, 2026</p>
-                    <p class="airline">Airline: Cebu Pacific (Economy)</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">54</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Laoag to Iloilo', '54')" class="btn-claim">Book This Flight</button>
-            </article>
-
-            <!-- ADDDED PROMO: Manila (NAIA) to Tokyo (Narita) -->
-            <article class="ticket-card" data-category="international">
-                <div class="flight-route">
-                    <div class="location"><span class="code">MNL</span><span class="city">Manila (NAIA)</span></div>
-                    <div class="plane-icon">✈️</div>
-                    <div class="location"><span class="code">NRT</span><span class="city">Tokyo (Narita)</span></div>
-                </div>
-                <div class="flight-details">
-                    
-                    <p class="travel-date">📅 21</p>
-                    <p class="airline">Airline: ANA</p>
-                    <div class="pricing">
-                        <div class="price-label">Promo Fare</div>
-                        <div class="price-val">123</div>
-                    </div>
-                </div>
-                <button onclick="openBooking('Manila (NAIA) to Tokyo (Narita)', '123')" class="btn-claim">Book This Flight</button>
-            </article>
-
                 <!-- Flight Card: Example 1 -->
-                <article class="ticket-card" data-category="international">
+                <article class="ticket-card" id="demo-1" data-category="international">
+                    <button class="btn-delete-card" onclick="deletePromo('demo-1', this)"
+                        title="Delete Promo">🗑️</button>
                     <div class="flight-route">
                         <div class="location">
                             <span class="code">MNL</span>
@@ -235,7 +427,9 @@
                 </article>
 
                 <!-- Flight Card: Example 2 -->
-                <article class="ticket-card" data-category="piso international">
+                <article class="ticket-card" id="demo-2" data-category="piso international">
+                    <button class="btn-delete-card" onclick="deletePromo('demo-2', this)"
+                        title="Delete Promo">🗑️</button>
                     <div class="flight-route">
                         <div class="location">
                             <span class="code">MNL</span>
@@ -278,50 +472,120 @@
             <h3>Add New Promo</h3>
             <div class="booking-form admin-form">
 
-                <!-- Category Selection -->
-                <div class="form-group tight">
-                    <label>Category</label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <label><input type="radio" name="newCat" value="international" checked> International</label>
-                        <label><input type="radio" name="newCat" value="domestic"> Domestic</label>
-                        <label><input type="radio" name="newCat" value="piso international"> Piso Fare</label>
-                    </div>
-                </div>
+                <!-- AIRPAZ-STYLE SEARCH WIDGET -->
+                <div style="margin-bottom: 20px;">
 
-                <!-- DYNAMIC DROPDOWNS: Origin & Destination -->
-                <div class="form-row">
-                    <div class="form-group tight" style="flex: 1;">
-                        <label>From (Origin)</label>
-                        <select id="newOrigin" class="admin-select">
-                            <!-- Populated by JS -->
-                        </select>
+                    <!-- Top Row: Trip Type -->
+                    <div style="display: flex; gap: 20px; margin-bottom: 15px; color: #cbd5e1; font-size: 0.9rem;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="roundtrip" checked onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            Round Trip
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="oneway" onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            One Way
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="radio" name="tripType" value="multicity" onchange="toggleTripType()"
+                                style="accent-color: var(--brand-orange);">
+                            Multi-city
+                        </label>
                     </div>
-                    <div class="form-group tight" style="flex: 1;">
-                        <label>To (Destination)</label>
-                        <select id="newDest" class="admin-select">
-                            <!-- Populated by JS -->
-                        </select>
-                    </div>
-                </div>
 
-                <!-- Airline Selection -->
-                <div class="form-group tight">
-                    <label>Airline</label>
-                    <select id="newAirline" class="admin-select">
-                        <!-- Populated by JS -->
-                    </select>
-                </div>
+                    <!-- Main Grid Inputs -->
+                    <div
+                        style="display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
 
-                <!-- Price & Details -->
-                <div class="form-row">
-                    <div class="form-group tight" style="flex: 1;">
-                        <label>Price</label>
-                        <input type="text" id="newPrice" placeholder="₱5,999">
+                        <!-- Origin -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">From</label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">🛫</span>
+                                <select id="newOrigin" class="admin-select"
+                                    style="padding-left: 35px; font-weight: 600;">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Destination -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">To</label>
+                            <div style="position: relative;">
+                                <span
+                                    style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">🛬</span>
+                                <select id="newDest" class="admin-select" style="padding-left: 35px; font-weight: 600;">
+                                    <!-- Populated by JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Departure -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Departure</label>
+                            <input type="date" id="dateStart" class="admin-input" style="font-size: 0.85rem;">
+                        </div>
+
+                        <!-- Return -->
+                        <div class="form-group tight">
+                            <label id="lblReturn"
+                                style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Return</label>
+                            <input type="date" id="dateEnd" class="admin-input" style="font-size: 0.85rem;">
+                            <!-- Hidden checkbox sync -->
+                            <input type="checkbox" id="isOneWay" style="display:none;">
+                        </div>
                     </div>
-                    <div class="form-group tight" style="flex: 1;">
-                        <label>Travel Dates</label>
-                        <input type="text" id="newDetails" placeholder="Jan - Mar 2026">
+
+                    <!-- Secondary Row: Cabin, Airline, Price -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+
+                        <!-- Cabin Class -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Cabin Class</label>
+                            <select id="newCabin" class="admin-select" style="font-size: 0.9rem;">
+                                <option value="Economy" selected>Economy</option>
+                                <option value="Premium Economy">Premium Economy</option>
+                                <option value="Business">Business</option>
+                                <option value="First Class">First Class</option>
+                            </select>
+                        </div>
+
+                        <!-- Airline -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Airline</label>
+                            <select id="newAirline" class="admin-select" style="font-size: 0.9rem;">
+                                <!-- Populated JS -->
+                            </select>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="form-group tight">
+                            <label style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px;">Promo Price</label>
+                            <input type="text" id="newPrice" placeholder="₱..."
+                                style="font-weight: bold; color: var(--brand-orange);">
+                        </div>
                     </div>
+
+                    <!-- Promo Category Tags -->
+                    <div
+                        style="margin-top: 15px; display: flex; align-items: center; gap: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px;">
+                        <span style="font-size: 0.8rem; color: #cbd5e1;">Route Type:</span>
+                        <label style="font-size: 0.85rem;"><input type="radio" name="baseCat" value="international"
+                                checked> 🌏 International</label>
+                        <label style="font-size: 0.85rem;"><input type="radio" name="baseCat" value="domestic"> 🇵🇭
+                            Domestic</label>
+
+                        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 10px;">
+                        </div>
+
+                        <label style="font-size: 0.85rem; font-weight: bold; color: #fbbf24;">
+                            <input type="checkbox" id="isPiso"> 🔥 Piso Fare
+                        </label>
+                    </div>
+
                 </div>
 
                 <!-- GitHub Token for Save -->
@@ -350,9 +614,14 @@
                     </div>
                 </div>
 
+                <!-- Status Message Area -->
+                <div id="statusMsg"
+                    style="display: none; padding: 10px; margin-bottom: 10px; border-radius: 5px; text-align: center; font-size: 0.9rem;">
+                </div>
+
                 <button onclick="addNewPromo()" class="btn-claim"
                     style="background: var(--brand-orange); width: 100%; font-size: 1.1rem;">
-                    + Save & Publish to Site
+                    + Search & Publish Promo
                 </button>
             </div>
         </div>
@@ -476,37 +745,45 @@
             const airlineSelect = document.getElementById('newAirline');
             airlineSelect.innerHTML = airlines.map(a => `<option value="${a}">${a}</option>`).join('');
 
-            // Setup Category Listeners
-            document.querySelectorAll('input[name="newCat"]').forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    populateAirports(e.target.value);
-                });
-            });
-
-            // Default Populate
-            populateAirports('international');
+            // Setup Category Listeners (Optional if we show all, but keeping for data-cat)
+            // Functionality simplified: Just init.
+            populateAirports();
         }
 
-        function populateAirports(category) {
-            const isDomestic = category === 'domestic';
-            const listToUse = isDomestic ? airports.domestic : airports.international;
-
-            // Origins (Always include Domestic hubs)
+        // --- IMPROVED POPULATE: Show All like Real Ticketing ---
+        function populateAirports() {
             const originSelect = document.getElementById('newOrigin');
             const destSelect = document.getElementById('newDest');
 
-            // Helper to build options
-            const buildOpts = (list) => list.map(item => `<option value="${item.code}|${item.city}">${item.city} (${item.code})</option>`).join('');
-
-            originSelect.innerHTML = buildOpts(airports.domestic);
-
-            // For Destination, if Piso Fare, maybe mix? For now, logic follows category strict
-            if (category.includes('piso')) {
-                // Combine for Piso
-                destSelect.innerHTML = buildOpts(airports.domestic.concat(airports.international));
-            } else {
-                destSelect.innerHTML = buildOpts(listToUse);
+            // Debugging: Ensure arrays exist
+            if (!airports.domestic || !airports.international) {
+                console.error("Airport data missing!");
+                return;
             }
+
+            // Build Options Explicitly
+            let domOpts = '<optgroup label="🇵🇭 Domestic">';
+            airports.domestic.forEach(a => {
+                domOpts += `<option value="${a.code}|${a.city}">${a.city} (${a.code})</option>`;
+            });
+            domOpts += '</optgroup>';
+
+            let intlOpts = '<optgroup label="🌏 International">';
+            airports.international.forEach(a => {
+                intlOpts += `<option value="${a.code}|${a.city}">${a.city} (${a.code})</option>`;
+            });
+            intlOpts += '</optgroup>';
+
+            const fullList = domOpts + intlOpts;
+
+            // Force Update
+            originSelect.innerHTML = fullList;
+            destSelect.innerHTML = fullList;
+
+            // Set Defaults (MNL -> NRT)
+            // We use a small timeout to ensure DOM render in some browsers, though direct set is usually fine.
+            originSelect.value = "MNL|Manila (NAIA)";
+            destSelect.value = "NRT|Tokyo (Narita)";
         }
 
 
@@ -520,7 +797,6 @@
 
             if (savedToken) {
                 document.getElementById('githubToken').value = savedToken;
-                // Only override if no value present (though simple is better: just set it)
                 if (savedUser) document.getElementById('ghUsername').value = savedUser;
                 if (savedRepo) document.getElementById('ghRepo').value = savedRepo;
                 document.getElementById('saveToken').checked = true;
@@ -529,6 +805,12 @@
 
         function closeLogin() {
             document.getElementById('loginModal').classList.remove('show');
+        }
+
+        function showDeleteButtons(show) {
+            document.querySelectorAll('.btn-delete-card').forEach(btn => {
+                btn.style.display = show ? 'flex' : 'none';
+            });
         }
 
         function attemptLogin() {
@@ -544,7 +826,13 @@
                 // Switch View
                 document.getElementById('customerView').style.display = 'none';
                 document.getElementById('adminView').style.display = 'block';
+
+                // FORCE POPULATE ON LOGIN
                 initAdminForm();
+
+                // Show Delete Buttons for existing cards
+                showDeleteButtons(true);
+
             } else {
                 alert("Incorrect username or password");
             }
@@ -553,14 +841,115 @@
         function logoutAdmin() {
             document.getElementById('adminView').style.display = 'none';
             document.getElementById('customerView').style.display = 'block';
+
+            // Hide Delete Buttons
+            showDeleteButtons(false);
+
+            // Clear Status
+            const stat = document.getElementById('statusMsg');
+            stat.style.display = 'none';
+            stat.innerText = '';
+        }
+
+        // --- FORM RESETTER ---
+        function resetForm() {
+            // Text/Values
+            document.getElementById('newPrice').value = "";
+            document.getElementById('dateStart').value = "";
+            document.getElementById('dateEnd').value = "";
+            document.getElementById('isPiso').checked = false;
+
+            // Dropdowns (Set to first option or specific defaults)
+            const origin = document.getElementById('newOrigin');
+            if (origin.options.length > 0) origin.selectedIndex = 0;
+
+            const dest = document.getElementById('newDest');
+            if (dest.options.length > 1) dest.selectedIndex = 1;
+
+            document.getElementById('newAirline').selectedIndex = 0;
+            document.getElementById('newCabin').selectedIndex = 0;
+
+            // Radios
+            document.querySelector('input[name="tripType"][value="roundtrip"]').checked = true;
+            document.querySelector('input[name="baseCat"][value="international"]').checked = true;
+
+            // Trigger UI Updates
+            toggleTripType();
+        }
+
+        // --- DELETE PROMO LOGIC ---
+        async function deletePromo(id, btnElement) {
+            const confirmDelete = confirm("Are you sure you want to DELETE this promo forever?");
+            if (!confirmDelete) return;
+
+            const token = document.getElementById('githubToken').value;
+            const username = document.getElementById('ghUsername').value;
+            const repo = document.getElementById('ghRepo').value;
+
+            if (!token) {
+                alert("Please login as Admin to delete.");
+                return;
+            }
+
+            // feedback
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "⏳";
+            btnElement.disabled = true;
+
+            try {
+                const REPO_FULL = `${username}/${repo}`;
+                const PATH = "index.html";
+                const API_URL = `https://api.github.com/repos/${REPO_FULL}/contents/${PATH}`;
+
+                const getRes = await fetch(API_URL, { headers: { 'Authorization': `token ${token}` } });
+                if (!getRes.ok) throw new Error("Fetch failed");
+
+                const data = await getRes.json();
+                const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
+
+                // Regex to find the promo block by ID
+                const regex = new RegExp(`<article[^>]*id="${id}"[^>]*>[\\s\\S]*?<\\/article>`, 'g');
+
+                if (!regex.test(currentContent)) {
+                    throw new Error("Promo not found in file (might be an old promo without ID).");
+                }
+
+                const newContent = currentContent.replace(regex, ''); // Remove it
+
+                // Push Update
+                const putRes = await fetch(API_URL, {
+                    method: "PUT",
+                    headers: { 'Authorization': `token ${token}` },
+                    body: JSON.stringify({
+                        message: `Delete Promo ID: ${id}`,
+                        content: btoa(String.fromCharCode(...new TextEncoder().encode(newContent))),
+                        sha: data.sha
+                    })
+                });
+
+                if (!putRes.ok) throw new Error("Failed to delete on GitHub.");
+
+                // Success: Remove from DOM
+                const card = document.getElementById(id);
+                if (card) card.remove();
+
+                alert("Promo Deleted Successfully!");
+
+            } catch (err) {
+                console.error(err);
+                alert("Delete Failed: " + err.message);
+                btnElement.innerText = "🗑️";
+                btnElement.disabled = false;
+            }
         }
 
 
-        // --- GITHUB API AUTO-SAVE LOGIC ---
+        // --- GITHUB API AUTO-SAVE LOGIC (NO RELOAD) ---
         async function addNewPromo() {
             const token = document.getElementById('githubToken').value;
             const username = document.getElementById('ghUsername').value;
             const repo = document.getElementById('ghRepo').value;
+            const statusBox = document.getElementById('statusMsg');
 
             if (!token || !username || !repo) {
                 alert("⚠️ Missing Settings!\n\nPlease enter your GitHub Username, Repo Name, and Secret Key.");
@@ -582,26 +971,55 @@
             const originVal = document.getElementById('newOrigin').value.split('|');
             const destVal = document.getElementById('newDest').value.split('|');
             const airline = document.getElementById('newAirline').value;
-            const category = document.querySelector('input[name="newCat"]:checked').value;
-            const price = document.getElementById('newPrice').value;
-            const details = document.getElementById('newDetails').value;
+            let price = document.getElementById('newPrice').value.trim();
+            const cabin = document.getElementById('newCabin').value;
 
-            // Construct New Card HTML
-            const pisoTag = category.includes('piso') ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
+            // Auto-Peso & Format Logic
+            const rawNum = price.replace(/[^0-9.]/g, '');
+            if (rawNum && !price.includes('₱')) {
+                const num = parseFloat(rawNum);
+                price = "₱" + num.toLocaleString('en-US');
+            } else if (!price.includes('₱') && /\d/.test(price)) {
+                price = "₱" + price;
+            }
 
-            // HTML Block
+            // Category Logic
+            const baseCat = document.querySelector('input[name="baseCat"]:checked').value;
+            const isPiso = document.getElementById('isPiso').checked;
+            let finalCat = baseCat;
+            if (isPiso) finalCat += " piso";
+
+            // Date Logic
+            const dStart = document.getElementById('dateStart').value;
+            const dEnd = document.getElementById('dateEnd').value;
+            const tripType = document.querySelector('input[name="tripType"]:checked').value;
+            const isOneWay = tripType === 'oneway';
+
+            if (!dStart) { alert("Please select a travel date."); return; }
+            if (tripType === 'roundtrip' && !dEnd) { alert("Please select a return date for Roundtrip."); return; }
+
+            const dateStr = formatDateRange(dStart, dEnd, isOneWay);
+
+
+            // ID Generation & HTML Construction
+            const promoID = "promo-" + Date.now();
+            const pisoTag = isPiso ? '<span class="tag-piso">🔥 PISO FARE WATCH</span>' : '';
+            const tripLabel = tripType === 'multicity' ? '<span style="font-size:0.7em; background:#333; padding:2px 4px; border-radius:3px;">Multi-city</span>' : '';
+
+            // Note: btn-delete-card defaults to hidden via CSS class, but we make it visible below since we are Admin
             const newCardHTML = `
             <!-- ADDDED PROMO: ${originVal[1]} to ${destVal[1]} -->
-            <article class="ticket-card" data-category="${category}">
+            <article class="ticket-card" id="${promoID}" data-category="${finalCat}">
+                <button class="btn-delete-card" onclick="deletePromo('${promoID}', this)" title="Delete Promo">🗑️</button>
                 <div class="flight-route">
                     <div class="location"><span class="code">${originVal[0]}</span><span class="city">${originVal[1]}</span></div>
-                    <div class="plane-icon">✈️</div>
+                    <div class="plane-icon">✈️ ${tripLabel}</div>
                     <div class="location"><span class="code">${destVal[0]}</span><span class="city">${destVal[1]}</span></div>
                 </div>
                 <div class="flight-details">
                     ${pisoTag}
-                    <p class="travel-date">📅 ${details}</p>
-                    <p class="airline">Airline: ${airline}</p>
+                    <p class="travel-date">📅 ${dateStr}</p>
+                    <p class="airline">Airline: ${airline} (${cabin})</p>
                     <div class="pricing">
                         <div class="price-label">Promo Fare</div>
                         <div class="price-val">${price}</div>
@@ -613,8 +1031,12 @@
             // Visual Feedback
             const btn = document.querySelector('.admin-form .btn-claim');
             const originalText = btn.innerText;
-            btn.innerText = "⏳ Connect to GitHub...";
+            btn.innerText = "⏳ Saving...";
             btn.disabled = true;
+            statusBox.style.display = 'block';
+            statusBox.style.background = '#e0f2fe';
+            statusBox.style.color = '#0284c7';
+            statusBox.innerText = "Syncing with GitHub... (Do not close)";
 
             try {
                 // 1. Config Dynamic
@@ -635,14 +1057,11 @@
 
                 const data = await getRes.json();
                 const sha = data.sha;
-
-                // Decode Content (Unicode Safe)
                 const currentContent = new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0)));
 
                 // 3. Inject New Card
                 const insertionPoint = '<div class="promo-grid" id="mainPromoGrid">';
                 if (!currentContent.includes(insertionPoint)) throw new Error("Critical: File structure unknown. Cannot inject promo.");
-
                 const newContent = currentContent.replace(insertionPoint, insertionPoint + "\n" + newCardHTML);
 
                 // 4. Push Update
@@ -658,16 +1077,120 @@
 
                 if (!putRes.ok) throw new Error("Failed to commit changes.");
 
-                alert("🎉 SUCCESS! Saved to GitHub.\n\nYour site will update in 1-2 minutes!");
-                location.reload();
+                // SUCCESS
+                btn.innerText = originalText;
+                btn.disabled = false;
+                statusBox.style.background = '#dcfce7';
+                statusBox.style.color = '#166534';
+                statusBox.innerHTML = `✅ <b>Promo Added!</b><br>Added: ${originVal[1]} ➝ ${destVal[1]}`;
+
+                // Client-side Update
+                const grid = document.getElementById('mainPromoGrid');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newCardHTML;
+                const newCardNode = tempDiv.firstElementChild;
+                grid.insertBefore(newCardNode, grid.firstChild);
+
+                // Show delete button
+                newCardNode.querySelector('.btn-delete-card').style.display = 'flex';
+
+                // RESET FORM
+                resetForm();
+
+                // Clear msg later
+                setTimeout(() => {
+                    statusBox.style.opacity = '0';
+                    setTimeout(() => { statusBox.style.display = 'none'; statusBox.style.opacity = '1'; }, 500);
+                }, 5000);
 
             } catch (err) {
                 console.error(err);
-                alert("Error: " + err.message);
                 btn.innerText = originalText;
                 btn.disabled = false;
+                statusBox.style.background = '#fee2e2';
+                statusBox.innerText = "Error: " + err.message;
             }
         }
+
+        // --- HELPER: Date Formatting ---
+        function formatDateRange(start, end, isOneWay) {
+            const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+            const d1 = new Date(start);
+
+            if (isOneWay || !end) {
+                return d1.toLocaleDateString('en-US', opts);
+            } else {
+                const d2 = new Date(end);
+                const m1 = d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const m2 = d2.toLocaleDateString('en-US', opts);
+                return `${m1} - ${m2}`;
+            }
+        }
+
+
+        function toggleTripType() {
+            const isRound = document.querySelector('input[name="tripType"][value="roundtrip"]').checked;
+            const dateEnd = document.getElementById('dateEnd');
+            const lblReturn = document.getElementById('lblReturn');
+
+            // Sync Hidden Checkbox (for existing logic)
+            document.getElementById('isOneWay').checked = !isRound;
+
+            if (isRound) {
+                dateEnd.disabled = false;
+                dateEnd.style.opacity = "1";
+                lblReturn.style.opacity = "1";
+            } else {
+                dateEnd.disabled = true;
+                dateEnd.value = "";
+                dateEnd.style.opacity = "0.3";
+                lblReturn.style.opacity = "0.3";
+            }
+        }
+
+        // --- RESTORED FUNCTIONS: Customer Interactions ---
+
+        function filterDeals(filter) {
+            // Update Buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.toLowerCase().includes(filter) || (filter === 'all' && btn.innerText.includes('Show All'))) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Filter Cards
+            const cards = document.querySelectorAll('.ticket-card');
+            cards.forEach(card => {
+                const cats = card.getAttribute('data-category');
+                if (filter === 'all' || cats.includes(filter)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function openBooking(route, price) {
+            document.getElementById('bookingModal').classList.add('show');
+            document.getElementById('modalRoute').innerText = route;
+            document.getElementById('modalPrice').innerText = price;
+
+            // Fill hidden inputs
+            document.getElementById('inputRoute').value = route;
+            document.getElementById('inputPrice').value = price;
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').classList.remove('show');
+        }
+
+        // --- UTILS: Enter Key for Login ---
+        document.getElementById('loginPass').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                attemptLogin();
+            }
+        });
     </script>
 </body>
 
